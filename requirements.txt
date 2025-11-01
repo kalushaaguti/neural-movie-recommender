@@ -1,2 +1,7 @@
-streamlit
-requests
+fastapi
+uvicorn
+numpy
+pandas
+scikit-learn
+sentence-transformers
+annoy
