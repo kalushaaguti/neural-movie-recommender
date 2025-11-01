@@ -10,6 +10,16 @@ from pydantic import BaseModel
 from typing import List, Optional
 from sklearn.neighbors import NearestNeighbors
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ---------- 1) Load artifacts ----------
 ARTIFACT_DIR = os.path.dirname(os.path.abspath(__file__))
 
