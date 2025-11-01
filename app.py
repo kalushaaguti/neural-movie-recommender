@@ -12,6 +12,10 @@ from sklearn.neighbors import NearestNeighbors
 
 from fastapi.middleware.cors import CORSMiddleware
 
+# Create FastAPI app first ✅
+app = FastAPI(title="Movie Recommendation API (No Annoy)")
+
+# Add CORS AFTER creating app ✅
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,19 +24,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------- 1) Load artifacts ----------
-ARTIFACT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-movies = pd.read_csv(os.path.join(ARTIFACT_DIR, "movies.csv"))
-indices = pd.read_csv(os.path.join(ARTIFACT_DIR, "indices.csv"), index_col=0).squeeze("columns")
-movie_embeddings = np.load(os.path.join(ARTIFACT_DIR, "movie_embeddings.npy"))
-
-# ---------- 2) Build Nearest Neighbors model ----------
-nn_model = NearestNeighbors(metric="cosine", algorithm="brute")
-nn_model.fit(movie_embeddings)
-
-# ---------- 3) FastAPI app ----------
-app = FastAPI(title="Movie Recommendation API (No Annoy)")
 
 class Recommendation(BaseModel):
     title: str
