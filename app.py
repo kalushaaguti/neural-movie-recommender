@@ -1,7 +1,3 @@
-# -----------------------------
-# Movie Recommendation API (using sklearn, no Annoy)
-# -----------------------------
-
 import os
 import numpy as np
 import pandas as pd
@@ -9,13 +5,13 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 from sklearn.neighbors import NearestNeighbors
-
 from fastapi.middleware.cors import CORSMiddleware
+from functools import lru_cache  # ✅ Added for caching
 
-# Create FastAPI app first ✅
+# ---------- 1) Create FastAPI app ----------
 app = FastAPI(title="Movie Recommendation API (No Annoy)")
 
-# Add CORS AFTER creating app ✅
+# ---------- 2) Enable CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,7 +20,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------- 3) Load artifacts ----------
+ARTIFACT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+movies = pd.read_csv(os.path.join(ARTIFACT_DIR, "movies.csv"))
+indices = pd.read_csv(os.path.join(ARTIFACT_DIR, "indices.csv"), index_col=0).squeeze("columns")
+
+@lru_cache
+def load_embeddings():
+    return np.load(os.path.join(ARTIFACT_DIR, "movie_embeddings.npy"))
+
+movie_embeddings = load_embeddings()   # ✅ Cached load
+
+# ---------- 4) Build Nearest Neighbor model ----------
+nn_model = NearestNeighbors(metric="cosine", algorithm="brute")
+nn_model.fit(movie_embeddings)
+
+# ---------- Response Models ----------
 class Recommendation(BaseModel):
     title: str
     overview: Optional[str] = None
@@ -33,7 +45,7 @@ class RecResponse(BaseModel):
     input_title: str
     recommendations: List[Recommendation]
 
-# ---------- 4) Recommendation Endpoint ----------
+# ---------- 5) API Endpoint ----------
 @app.get("/recommend", response_model=RecResponse)
 def recommend(
     title: str = Query(..., description="Exact movie title"),
@@ -44,13 +56,12 @@ def recommend(
 
     row_id = int(indices[title])
 
-    # Find nearest neighbors
+    # Get nearest neighbors
     distances, neighbors = nn_model.kneighbors(
         movie_embeddings[row_id].reshape(1, -1),
         n_neighbors=n+1
     )
 
-    # Remove itself
     neighbor_ids = [i for i in neighbors.flatten() if i != row_id][:n]
 
     rec_df = movies.loc[neighbor_ids, ["title", "overview"]].reset_index(drop=True)
